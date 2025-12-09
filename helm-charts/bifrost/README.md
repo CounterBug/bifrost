@@ -1,128 +1,163 @@
-# Bifrost Helm Chart
+# Bifrost Helm Charts
 
-This Helm chart deploys [Bifrost](https://www.getbifrost.ai) - an AI Gateway with unified interface for multiple LLM providers.
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/bifrost)](https://artifacthub.io/packages/search?repo=bifrost)
 
-## Features
+Official Helm charts for deploying [Bifrost](https://github.com/maximhq/bifrost) - a high-performance AI gateway with unified interface for multiple providers.
 
-- 🚀 Support for multiple storage backends (SQLite, PostgreSQL)
-- 🔍 Optional vector store integration (Weaviate, Redis, Qdrant)
-- 📊 Built-in observability and metrics
-- 🔐 Encryption support for sensitive data
-- 🎯 Semantic caching capabilities
-- 📈 Horizontal Pod Autoscaling
-- 🌐 Ingress support with TLS
-- 🔄 Multiple deployment configurations
+## Quick Start
+
+```bash
+# Add the Bifrost Helm repository
+helm repo add bifrost https://maximhq.github.io/bifrost/helm-charts
+
+# Update your local Helm chart repository cache
+helm repo update
+
+# Install Bifrost with default configuration (SQLite storage)
+helm install bifrost bifrost/bifrost --set image.tag=v1.3.37
+```
 
 ## Prerequisites
 
-- Kubernetes 1.19+
+- Kubernetes 1.23+
 - Helm 3.2.0+
-- PV provisioner support in the underlying infrastructure (if using persistence)
+- PV provisioner support in the underlying infrastructure (for persistent storage)
 
 ## Installation
 
-### Quick Start (SQLite)
+### From Helm Repository (Recommended)
 
 ```bash
-helm install bifrost ./bifrost
+# Add repository
+helm repo add bifrost https://maximhq.github.io/bifrost/helm-charts
+helm repo update
+
+# Install with default values
+helm install bifrost bifrost/bifrost --set image.tag=v1.3.37
+
+# Or install with custom values
+helm install bifrost bifrost/bifrost -f my-values.yaml
 ```
 
-This will deploy Bifrost with SQLite as the storage backend.
-
-### PostgreSQL Backend
+### From Source
 
 ```bash
-helm install bifrost ./bifrost -f values-examples/postgres-only.yaml
+# Clone the repository
+git clone https://github.com/maximhq/bifrost.git
+cd bifrost/helm-charts
+
+# Install from local chart
+helm install bifrost ./bifrost --set image.tag=v1.3.37
 ```
 
-### PostgreSQL + Weaviate
+### Interactive Installation
+
+Use the included installation script for guided setup:
 
 ```bash
-helm install bifrost ./bifrost -f values-examples/postgres-weaviate.yaml
-```
-
-### PostgreSQL + Redis
-
-```bash
-helm install bifrost ./bifrost -f values-examples/postgres-redis.yaml
-```
-
-### PostgreSQL + Qdrant
-
-```bash
-helm install bifrost ./bifrost -f values-examples/postgres-qdrant.yaml
-```
-
-### SQLite + Weaviate
-
-```bash
-helm install bifrost ./bifrost -f values-examples/sqlite-weaviate.yaml
-```
-
-### SQLite + Redis
-
-```bash
-helm install bifrost ./bifrost -f values-examples/sqlite-redis.yaml
-```
-
-### SQLite + Qdrant
-
-```bash
-helm install bifrost ./bifrost -f values-examples/sqlite-qdrant.yaml
-```
-
-### External PostgreSQL
-
-```bash
-# Edit values-examples/external-postgres.yaml with your database details
-helm install bifrost ./bifrost -f values-examples/external-postgres.yaml
-```
-
-### Production HA Setup
-
-```bash
-# Edit values-examples/production-ha.yaml with your configuration
-helm install bifrost ./bifrost -f values-examples/production-ha.yaml
+cd bifrost/helm-charts/bifrost
+./scripts/install.sh
 ```
 
 ## Configuration
 
-### Storage Modes
-
-The chart supports two storage modes controlled by `storage.mode`:
-
-- **sqlite** (default): Uses SQLite databases stored in persistent volumes
-- **postgres**: Uses PostgreSQL for config and logs storage
-
-### Vector Store Options
-
-Configure semantic caching with vector stores:
-
-- **none** (default): No vector store
-- **weaviate**: Use Weaviate for vector storage
-- **redis**: Use Redis for vector storage
-- **qdrant**: Use Qdrant for vector storage
-
-### Key Configuration Parameters
+### Image Configuration
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `storage.mode` | Storage backend (sqlite/postgres) | `sqlite` |
+| `image.repository` | Container image repository | `docker.io/maximhq/bifrost` |
+| `image.tag` | Container image tag (required) | `""` |
+| `image.pullPolicy` | Image pull policy | `IfNotPresent` |
+
+> **Important:** You must specify the `image.tag`. See available tags at [Docker Hub](https://hub.docker.com/r/maximhq/bifrost/tags).
+
+### Storage Configuration
+
+Bifrost supports two storage backends:
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `storage.mode` | Storage backend: `sqlite` or `postgres` | `sqlite` |
 | `storage.persistence.enabled` | Enable persistent storage for SQLite | `true` |
-| `storage.persistence.size` | Size of persistent volume | `10Gi` |
+| `storage.persistence.size` | Storage size | `10Gi` |
+| `storage.configStore.enabled` | Enable configuration store | `true` |
+| `storage.logsStore.enabled` | Enable logs store | `true` |
+
+### PostgreSQL Configuration
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
 | `postgresql.enabled` | Deploy PostgreSQL | `false` |
+| `postgresql.auth.username` | Database username | `bifrost` |
+| `postgresql.auth.password` | Database password | `bifrost_password` |
+| `postgresql.auth.database` | Database name | `bifrost` |
 | `postgresql.external.enabled` | Use external PostgreSQL | `false` |
+| `postgresql.external.host` | External PostgreSQL host | `""` |
+
+### Vector Store Configuration (Semantic Caching)
+
+Bifrost supports multiple vector stores for semantic caching:
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
 | `vectorStore.enabled` | Enable vector store | `false` |
-| `vectorStore.type` | Vector store type (none/weaviate/redis/qdrant) | `none` |
+| `vectorStore.type` | Vector store type: `none`, `weaviate`, `redis`, `qdrant` | `none` |
+
+#### Weaviate
+
+```yaml
+vectorStore:
+  enabled: true
+  type: weaviate
+  weaviate:
+    enabled: true  # Deploy Weaviate
+    # Or use external:
+    # external:
+    #   enabled: true
+    #   host: "weaviate.example.com"
+```
+
+#### Redis
+
+```yaml
+vectorStore:
+  enabled: true
+  type: redis
+  redis:
+    enabled: true  # Deploy Redis
+    # Or use external:
+    # external:
+    #   enabled: true
+    #   host: "redis.example.com"
+```
+
+#### Qdrant
+
+```yaml
+vectorStore:
+  enabled: true
+  type: qdrant
+  qdrant:
+    enabled: true  # Deploy Qdrant
+    # Or use external:
+    # external:
+    #   enabled: true
+    #   host: "qdrant.example.com"
+```
+
+### Bifrost Application Configuration
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `bifrost.port` | Application port | `8080` |
+| `bifrost.host` | Bind address | `0.0.0.0` |
+| `bifrost.logLevel` | Log level | `info` |
+| `bifrost.logStyle` | Log format: `json` or `text` | `json` |
 | `bifrost.encryptionKey` | Encryption key for sensitive data | `""` |
-| `bifrost.client.enableLogging` | Enable request/response logging | `true` |
-| `bifrost.providers` | LLM provider configurations | `{}` |
-| `ingress.enabled` | Enable ingress | `false` |
-| `autoscaling.enabled` | Enable HPA | `false` |
 
-### Adding Provider Keys
+### Provider Configuration
 
-Edit your values file or use `--set`:
+Configure AI provider API keys:
 
 ```yaml
 bifrost:
@@ -137,244 +172,90 @@ bifrost:
           weight: 1
 ```
 
-Or via command line:
+### Plugins Configuration
 
-```bash
-helm install bifrost ./bifrost \
-  --set bifrost.providers.openai.keys[0].value="sk-..." \
-  --set bifrost.providers.openai.keys[0].weight=1
-```
+| Plugin | Parameter | Description |
+|--------|-----------|-------------|
+| Telemetry | `bifrost.plugins.telemetry.enabled` | Enable metrics collection |
+| Logging | `bifrost.plugins.logging.enabled` | Enable request logging |
+| Governance | `bifrost.plugins.governance.enabled` | Enable budget management |
+| Semantic Cache | `bifrost.plugins.semanticCache.enabled` | Enable semantic caching |
+| OTEL | `bifrost.plugins.otel.enabled` | Enable OpenTelemetry integration |
+| Maxim | `bifrost.plugins.maxim.enabled` | Enable Maxim observability |
 
-### Enabling Plugins
-
-```yaml
-bifrost:
-  plugins:
-    telemetry:
-      enabled: true
-      config: {}
-    
-    logging:
-      enabled: true
-      config: {}
-    
-    governance:
-      enabled: true
-      config:
-        isVkMandatory: false
-    
-    semanticCache:
-      enabled: true
-      config:
-        provider: "openai"
-        keys:
-          - "sk-..."
-        embeddingModel: "text-embedding-3-small"
-        dimension: 1536
-        threshold: 0.8
-        ttl: "5m"
-```
-
-## Architecture Patterns
-
-### Pattern 1: Simple Development Setup
-- **Storage**: SQLite
-- **Scale**: Single replica
-- **Use Case**: Local development, testing
-
-```bash
-helm install bifrost ./bifrost
-```
-
-### Pattern 2: Production with PostgreSQL
-- **Storage**: PostgreSQL
-- **Scale**: Multiple replicas with HPA
-- **Features**: Logging, telemetry, governance
-- **Use Case**: Production deployments
-
-```bash
-helm install bifrost ./bifrost -f values-examples/production-ha.yaml
-```
-
-### Pattern 3: ML/AI Workloads
-- **Storage**: PostgreSQL
-- **Vector Store**: Weaviate
-- **Features**: Semantic caching, embeddings
-- **Use Case**: High-volume AI inference with caching
-
-```bash
-helm install bifrost ./bifrost -f values-examples/postgres-weaviate.yaml
-```
-
-## Upgrade
-
-```bash
-helm upgrade bifrost ./bifrost -f your-values.yaml
-```
-
-## Uninstall
-
-```bash
-helm uninstall bifrost
-```
-
-To delete PVCs:
-
-```bash
-kubectl delete pvc -l app.kubernetes.io/instance=bifrost
-```
-
-## Accessing Bifrost
-
-### Port Forward (ClusterIP)
-
-```bash
-export POD_NAME=$(kubectl get pods -l "app.kubernetes.io/name=bifrost,app.kubernetes.io/instance=bifrost" -o jsonpath="{.items[0].metadata.name}")
-kubectl port-forward $POD_NAME 8080:8080
-```
-
-Then access at http://localhost:8080
-
-### LoadBalancer
-
-```bash
-export SERVICE_IP=$(kubectl get svc bifrost --template "{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}")
-echo http://$SERVICE_IP:8080
-```
-
-### Ingress
-
-Configure `ingress.enabled=true` and access via your domain.
-
-## Monitoring
-
-Bifrost exposes Prometheus metrics at `/metrics` endpoint.
-
-Enable telemetry plugin:
+### Ingress Configuration
 
 ```yaml
-bifrost:
-  plugins:
-    telemetry:
-      enabled: true
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: bifrost.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: bifrost-tls
+      hosts:
+        - bifrost.example.com
 ```
 
-## Security Considerations
-
-1. **Encryption Key**: Always set a strong encryption key for production:
-   ```yaml
-   bifrost:
-     encryptionKey: "your-secure-32-byte-key-here"
-   ```
-
-2. **Database Passwords**: Use strong passwords for PostgreSQL/Redis:
-   ```yaml
-   postgresql:
-     auth:
-       password: "use-a-strong-password"
-   ```
-
-3. **Secrets Management**: Consider using external secret management:
-   ```yaml
-   envFrom:
-     - secretRef:
-         name: bifrost-secrets
-   ```
-
-4. **Network Policies**: Implement Kubernetes network policies to restrict traffic.
-
-5. **RBAC**: Use appropriate service account permissions.
-
-## Troubleshooting
-
-### Check Pod Status
-
-```bash
-kubectl get pods -l app.kubernetes.io/name=bifrost
-kubectl logs -l app.kubernetes.io/name=bifrost
-```
-
-### Check Configuration
-
-```bash
-kubectl get configmap bifrost-config -o yaml
-```
-
-### Database Connection Issues
-
-For PostgreSQL:
-```bash
-kubectl exec -it deployment/bifrost-postgresql -- psql -U bifrost -d bifrost
-```
-
-For SQLite:
-```bash
-kubectl exec -it deployment/bifrost -- ls -la /app/data/
-```
-
-### Vector Store Issues
-
-Check Weaviate:
-```bash
-kubectl logs -l app.kubernetes.io/component=vectorstore
-kubectl port-forward svc/bifrost-weaviate 8080:8080
-```
-
-Check Redis:
-```bash
-kubectl logs -l app.kubernetes.io/component=redis
-kubectl exec -it deployment/bifrost-redis-master -- redis-cli ping
-```
-
-Check Qdrant:
-```bash
-kubectl logs -l app.kubernetes.io/component=vectorstore
-kubectl port-forward svc/bifrost-qdrant 6334:6334
-```
-
-## Examples
-
-### Example 1: Deploy with OpenAI Provider
-
-```bash
-cat <<EOF | helm install bifrost ./bifrost -f -
-bifrost:
-  providers:
-    openai:
-      keys:
-        - value: "$OPENAI_API_KEY"
-          weight: 1
-EOF
-```
-
-### Example 2: Deploy with Multiple Providers
+### Auto-scaling Configuration
 
 ```yaml
-# my-values.yaml
-bifrost:
-  providers:
-    openai:
-      keys:
-        - value: "sk-..."
-          weight: 1
-    anthropic:
-      keys:
-        - value: "sk-ant-..."
-          weight: 1
-    gemini:
-      keys:
-        - value: "..."
-          weight: 1
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
 ```
+
+## Example Configurations
+
+The chart includes pre-configured examples in `values-examples/`:
+
+| Configuration | Description |
+|---------------|-------------|
+| `sqlite-only.yaml` | Simple setup with SQLite (local development) |
+| `postgres-only.yaml` | PostgreSQL for config and logs |
+| `postgres-weaviate.yaml` | PostgreSQL + Weaviate for semantic caching |
+| `postgres-redis.yaml` | PostgreSQL + Redis for semantic caching |
+| `postgres-qdrant.yaml` | PostgreSQL + Qdrant for semantic caching |
+| `sqlite-weaviate.yaml` | SQLite + Weaviate |
+| `sqlite-redis.yaml` | SQLite + Redis |
+| `sqlite-qdrant.yaml` | SQLite + Qdrant |
+| `external-postgres.yaml` | Using external PostgreSQL |
+| `production-ha.yaml` | Production high-availability setup |
+
+### Using Example Configurations
 
 ```bash
-helm install bifrost ./bifrost -f my-values.yaml
+# From Helm repository
+helm install bifrost bifrost/bifrost \
+  -f https://raw.githubusercontent.com/maximhq/bifrost/main/helm-charts/bifrost/values-examples/postgres-only.yaml \
+  --set image.tag=v1.3.37
+
+# From local source
+helm install bifrost ./bifrost -f ./bifrost/values-examples/postgres-only.yaml
 ```
 
-### Example 3: Production Setup with Monitoring
+## Production Deployment
+
+For production deployments, we recommend:
+
+1. **Use PostgreSQL** for reliable data persistence
+2. **Enable semantic caching** with Weaviate, Redis, or Qdrant
+3. **Configure auto-scaling** for handling variable load
+4. **Set up Ingress** with TLS termination
+5. **Use external secrets** for sensitive data
+
+### Example Production Setup
 
 ```yaml
-# production.yaml
+# production-values.yaml
 replicaCount: 3
 
 autoscaling:
@@ -387,6 +268,8 @@ storage:
 
 postgresql:
   enabled: true
+  auth:
+    password: "SECURE_PASSWORD_HERE"
   primary:
     persistence:
       size: 50Gi
@@ -394,25 +277,158 @@ postgresql:
 vectorStore:
   enabled: true
   type: weaviate
+  weaviate:
+    enabled: true
+    persistence:
+      size: 50Gi
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: bifrost.yourdomain.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: bifrost-tls
+      hosts:
+        - bifrost.yourdomain.com
 
 bifrost:
-  encryptionKey: "production-key-32-bytes-long"
+  client:
+    initialPoolSize: 1000
+    allowedOrigins:
+      - "https://yourdomain.com"
   plugins:
+    semanticCache:
+      enabled: true
     telemetry:
       enabled: true
     logging:
       enabled: true
-    semanticCache:
-      enabled: true
 ```
 
-## Support
+## Upgrading
 
-- Documentation: [Bifrost Docs](https://www.getbifrost.ai/docs)
-- GitHub: [maximhq/bifrost](https://github.com/maximhq/bifrost)
-- Issues: [GitHub Issues](https://github.com/maximhq/bifrost/issues)
+```bash
+# Update repository
+helm repo update
+
+# Upgrade release
+helm upgrade bifrost bifrost/bifrost --set image.tag=v1.3.37
+
+# Or with custom values
+helm upgrade bifrost bifrost/bifrost -f my-values.yaml
+```
+
+## Uninstalling
+
+```bash
+# Uninstall release
+helm uninstall bifrost
+
+# If you want to delete persistent volumes
+kubectl delete pvc -l app.kubernetes.io/name=bifrost
+```
+
+## Accessing Bifrost
+
+After installation, access Bifrost using one of these methods:
+
+### Port Forwarding (Development)
+
+```bash
+kubectl port-forward svc/bifrost 8080:8080
+# Then visit http://localhost:8080
+```
+
+### LoadBalancer
+
+```yaml
+service:
+  type: LoadBalancer
+```
+
+### Ingress
+
+Configure the `ingress` section as shown above.
+
+## Monitoring
+
+Bifrost exposes Prometheus metrics at `/metrics`:
+
+```bash
+# Get metrics
+curl http://localhost:8080/metrics
+```
+
+For OpenTelemetry integration:
+
+```yaml
+bifrost:
+  plugins:
+    otel:
+      enabled: true
+      config:
+        service_name: "bifrost"
+        collector_url: "http://otel-collector:4317"
+        trace_type: "otel"
+        protocol: "grpc"
+```
+
+## Troubleshooting
+
+### Check Pod Status
+
+```bash
+kubectl get pods -l app.kubernetes.io/name=bifrost
+kubectl describe pod <pod-name>
+```
+
+### View Logs
+
+```bash
+kubectl logs -l app.kubernetes.io/name=bifrost -f
+```
+
+### Check Configuration
+
+```bash
+# View generated configmap
+kubectl get configmap bifrost -o yaml
+
+# View generated secrets
+kubectl get secret bifrost -o yaml
+```
+
+### Common Issues
+
+**Pod stuck in Pending state:**
+- Check if PersistentVolume is available: `kubectl get pv`
+- Check storage class: `kubectl get storageclass`
+
+**Pod CrashLoopBackOff:**
+- Check logs: `kubectl logs <pod-name>`
+- Verify environment variables and secrets
+
+**Cannot connect to PostgreSQL:**
+- Ensure PostgreSQL pod is running
+- Check connection string in configmap/secrets
+- Verify network policies allow connectivity
+
+## Resources
+
+- [Bifrost Documentation](https://docs.getbifrost.ai)
+- [GitHub Repository](https://github.com/maximhq/bifrost)
+- [Docker Hub](https://hub.docker.com/r/maximhq/bifrost)
+- [Discord Community](https://discord.gg/exN5KAydbU)
 
 ## License
 
-This chart is provided under the same license as Bifrost.
+This project is licensed under the Apache 2.0 License - see the [LICENSE](../LICENSE) file for details.
+
+Built with ❤️ by [Maxim](https://github.com/maximhq)
 
