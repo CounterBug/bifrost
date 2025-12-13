@@ -24,6 +24,7 @@ import (
 	"github.com/maximhq/bifrost/framework/configstore/tables"
 	"github.com/maximhq/bifrost/framework/logstore"
 	dynamicPlugins "github.com/maximhq/bifrost/framework/plugins"
+	"github.com/maximhq/bifrost/plugins/analytics"
 	"github.com/maximhq/bifrost/plugins/governance"
 	"github.com/maximhq/bifrost/plugins/logging"
 	"github.com/maximhq/bifrost/plugins/maxim"
@@ -315,6 +316,19 @@ func LoadPlugin[T schemas.Plugin](ctx context.Context, name string, path *string
 			return p, nil
 		}
 		return zero, fmt.Errorf("otel plugin type mismatch")
+	case analytics.PluginName:
+		analyticsConfig, err := MarshalPluginConfig[analytics.Config](pluginConfig)
+		if err != nil {
+			return zero, fmt.Errorf("failed to marshal analytics plugin config: %v", err)
+		}
+		plugin, err := analytics.Init(ctx, analyticsConfig, logger, bifrostConfig.PricingManager)
+		if err != nil {
+			return zero, err
+		}
+		if p, ok := any(plugin).(T); ok {
+			return p, nil
+		}
+		return zero, fmt.Errorf("analytics plugin type mismatch")
 	}
 	return zero, fmt.Errorf("plugin %s not found", name)
 }
